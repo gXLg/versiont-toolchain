@@ -1,0 +1,43 @@
+plugins {
+    id "groovy"
+    id "java-gradle-plugin"
+    id "maven-publish"
+    id "com.gradle.plugin-publish" version "1.2.1"
+}
+
+group = "dev.gxlg"
+version = "0.0.1"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation gradleApi()
+    implementation localGroovy()
+}
+
+gradlePlugin {
+    website = "https://github.com/gXLg/versiont-toolchain"
+    vcsUrl = "https://github.com/gXLg/versiont-toolchain.git"
+
+    plugins {
+        versiontToolchain {
+            id = "dev.gxlg.versiont-toolchain"
+            implementationClass = "dev.gxlg.versiont.toolchain.VersiontPlugin"
+            displayName = "Version't Toolchain"
+            description = "A powerful java reflection layer and toolchain targeted at multi-version Minecraft Fabric modding"
+            tags.set(["code-generation", "minecraft", "fabricmc", "multiversion"])
+        }
+    }
+}
+
+// For local testing
+publishing {
+    repositories {
+        maven {
+            name = "local"
+            url = layout.buildDirectory.dir("repo")
+        }
+    }
+}

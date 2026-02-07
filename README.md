@@ -1,7 +1,7 @@
 <!--suppress HtmlDeprecatedAttribute -->
 <h1>
     <img src="https://gxlg.github.io/badges/versiont.svg" height="64px" align="right" alt="Version't logo">
-    Version't
+    Version't (Toolchain)
     <br>
     <span>
         <img src="https://gxlg.github.io/badges/minecraft.svg" height="32px" alt="Minecraft badge">
@@ -10,11 +10,12 @@
     </span>
 </h1>
 
-A powerful java reflection layer and toolchain for Minecraft Fabric modding
+A powerful java reflection layer and toolchain targeted at multi-version Minecraft Fabric modding
 
 * Currently, Version't is in **beta**
 * Supports all Minecraft release versions starting at **1.17**
-* This page is the source code of **Version't Toolchain**: A Gradle plugin targeted at multi-version Minecraft mod development
+* This page is about **Version't Toolchain**: A Gradle plugin to make use of the
+  Version't Library and to generate mappings for it
 * Developer documentation (work in progress): [<kbd>Version't Wiki</kbd>](https://github.com/gXLg/versiont-toolchain/wiki)
 * See also: [<kbd>Version't Library</kbd>](https://github.com/gXLg/versiont-lib)
 
