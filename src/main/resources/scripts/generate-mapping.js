@@ -364,9 +364,21 @@ function processClass(part) {
       // method
 
       let lineToParse = child.parent;
-      const toExtend = lineToParse.startsWith("* ");
+      const toExtend = lineToParse.startsWith("*");
+      let superInterface = null;
       if (toExtend) {
-        lineToParse = lineToParse.slice(2).trimStart();
+        if (lineToParse.startsWith("* ")) {
+          lineToParse = lineToParse.slice(2).trimStart();
+        } else {
+          const [si, ...rest] = lineToParse.slice(1).split(" ");
+          const tree = typeTree(si, additionalClasses, shortClassNames, true);
+          if (tree.type !== "wrapper") {
+            console.log("Wrapped method can only super-extend methods of Wrapper interfaces!");
+            process.exit(1);
+          }
+          superInterface = tree.main.slice(0, -1);
+          lineToParse = rest.join(" ");
+        }
       }
       const toAccess = lineToParse.startsWith("+ ");
       if (toAccess) {
@@ -422,6 +434,13 @@ function processClass(part) {
         }
       }
 
+      if (superInterface != null) {
+          if (isPrivate || isProtected) {
+              console.log("Wrapper is overriding a method from an interface and reduces its' visibility!");
+              process.exit(1);
+          }
+      }
+
       const signatures = isStatic ? staticMethodSignatures : instanceMethodSignatures;
 
       const returnTypeIndex = brackets(lineToParse, 0, " ");
@@ -454,10 +473,10 @@ function processClass(part) {
       const argumentsSignature = arguments.map(a => buildSignatureType(a.type));
       const methodName = getMethodName(rawMethodName, argumentsSignature, signatures);
 
-      const methodParent = isStatic ? "clazz" : "clazz.inst(this.instance)";
+      const methodParent = isStatic ? "clazz" : (superInterface == null ? "clazz.inst(this.instance)" : `${superInterface}.clazz.inst(this.instance)`);
       const methodsArray = isStatic ? staticMethods : instanceMethods;
       const access = isProtected ? "protected" : (isPrivate ? "private" : "public");
-      const modifier = isStatic ? "static " : "";
+      const modifier = isStatic ? "static " : (toExtend ? "" : "final ");
       let body;
       if (isNullable) {
         const exec = `Object __return = ${methodParent}.mthd("${reflectionMethodGetter}", ${buildClassGetter(returnTypeTree)}${arguments.map(a => ", " + buildClassGetter(a.type)).join("")}).invk(${arguments.map(a => buildUnwrapper(a.type).replace("%", a.name)).join(", ")});\n`;
@@ -567,7 +586,7 @@ function processClass(part) {
         }
 
         instanceMethods.push(
-          `    public ${fieldTypeString} ${getterMethodName}() {\n` +
+          `    public final ${fieldTypeString} ${getterMethodName}() {\n` +
           `        ${body};\n` +
           `    }`
         );
@@ -575,7 +594,7 @@ function processClass(part) {
           const setterMethodName = getMethodName("set" + capitalName, [buildSignatureType(fieldTypeTree)], instanceMethodSignatures);
           const nullCheck = isNullable ? "value == null ? null : " : "";
           instanceMethods.push(
-            `    public void ${setterMethodName}(${fieldTypeString} value) {\n` +
+            `    public final void ${setterMethodName}(${fieldTypeString} value) {\n` +
             `        this.${fieldName}.set(${nullCheck}${buildUnwrapper(fieldTypeTree).replace("%", "value")});\n` +
             `    }`
           );
@@ -646,7 +665,7 @@ function processInterface(part) {
   if (parts[0] === "extends") {
     parts.shift();
     while (parts.length) {
-      const c = parts.unshift();
+      const c = parts.shift();
       const tree = typeTree(c, additionalClasses, shortClassNames, true);
       if (tree.type !== "wrapper") {
         console.log("Wrapper interface can only extend other Wrapper interfaces!");
@@ -739,6 +758,7 @@ function processInterface(part) {
         }
         instanceMethods.push(
           `    default ${buildTypeString(returnTypeTree)} ${methodName}(${arguments.map(a => buildTypeString(a.type) + " " + a.name).join(", ")})\n` +
+          `    default ${buildTypeString(returnTypeTree)} ${methodName}(${arguments.map(a => buildTypeString(a.type) + " " + a.name).join(", ")}) {\n` +
           `        ${body};\n` +
           `    }`
         );
@@ -748,12 +768,12 @@ function processInterface(part) {
         );
       }
 
-      const exec = `this.${methodName}(${arguments.map((a, i) => buildWrapper(a.type).replace("%", "args[" + i + "]")).join(", ")})`;
-      const body = returnTypeTree.type === "void" ? `${exec};\n                    return null` : `return ${buildUnwrapper(returnTypeTree).replace("%", exec)}`;
+      const exec = `thiz.${methodName}(${arguments.map((a, i) => buildWrapper(a.type).replace("%", "args[" + i + "]")).join(", ")})`;
+      const body = returnTypeTree.type === "void" ? `${exec};\n                    return new R.RedirectedCall(true, null)` : `return new R.RedirectedCall(true, ${buildUnwrapper(returnTypeTree).replace("%", exec)})`;
       instanceMethodCallers.push(
-        `                if ((${reflectionMethodGetter.split("/").map(g => "methodName.equals(\"" + g + "\")").join(" || ")}) && R.methodMatches(method, ${buildClassGetter(returnTypeTree)}${arguments.map(a => ", " + buildClassGetter(a.type)).join("")})) {\n` +
-        `                    ${body};\n` +
-        `                }`
+        `        if ((${reflectionMethodGetter.split("/").map(g => "methodName.equals(\"" + g + "\")").join(" || ")}) && R.methodMatches(method, ${buildClassGetter(returnTypeTree)}${arguments.map(a => ", " + buildClassGetter(a.type)).join("")})) {\n` +
+        `            ${body};\n` +
+        `        }`
       );
 
     } else if (child.parent.startsWith("class ") || child.parent.startsWith("interface ")) {
@@ -768,25 +788,64 @@ function processInterface(part) {
   }
 
   const ext = extendingInterfaces.length ? extendingInterfaces.map(i => ", " + i).join("") : "";
+
+  const redirects = [];
+  redirects.push(
+      `                    R.RedirectedCall redirect = redirect(this, method, args);\n` +
+      `                    if (redirect.isRedirected()) {\n` +
+      `                        return redirect.result();\n` +
+      `                    }`
+  );
+  for (const ex of extendingInterfaces) {
+      redirects.push(
+          `                    redirect = ${ex}.redirect(this, method, args);\n` +
+          `                    if (redirect.isRedirected()) {\n` +
+          `                        return redirect.result();\n` +
+          `                    }`
+      );
+  }
+
   processedClasses[fullyQualified] = (
     `package ${javaPackage};\n` +
     `\n` +
     `import dev.gxlg.versiont.api.R;\n` +
     `\n` +
+    `import java.lang.reflect.InvocationHandler;\n` +
     `import java.lang.reflect.Proxy;\n` +
+    `import java.lang.reflect.Method;\n` +
+    `import java.util.Collections;\n` +
+    `import java.util.Map;\n` +
+    `import java.util.WeakHashMap;\n` +
+    `import java.util.concurrent.atomic.AtomicInteger;\n` +
     `\n` +
     `public interface ${className} extends R.RWrapperInterface<${wrapperClassName}>${ext} {\n` +
     `${instanceMethods.join("\n\n")}\n` +
     `\n` +
     `    @Override\n` +
-    `    default ${wrapperClassName} wrapper() {\n` +
-    `        return ${wrapperClassName}.inst(Proxy.newProxyInstance(\n` +
-    `            Thread.currentThread().getContextClassLoader(), new Class[]{ ${wrapperClassName}.clazz.self() }, (proxy, method, args) -> {\n` +
-    `                String methodName = method.getName();\n` +
-    `${instanceMethodCallers.join("\n\n")}\n` +
-    `                return method.invoke(proxy, args);\n` +
-    `            }\n` +
-    `        ));\n` +
+    `    default Object unwrap() {\n` +
+    `        return as${wrapperClassName}().unwrap();\n` +
+    `    }\n` +
+    `\n` +
+    `    default ${wrapperClassName} as${wrapperClassName}() {\n` +
+    `        Class<?> implClz = ${wrapperClassName}.clazz.self();\n` +
+    `        AtomicInteger counter = superCall.computeIfAbsent(this, k -> new AtomicInteger(0));\n` +
+    `        return instances.computeIfAbsent(\n` +
+    `            this, k -> ${wrapperClassName}.inst(Proxy.newProxyInstance(\n` +
+    `                implClz.getClassLoader(), new Class[]{ implClz }, (proxy, method, args) -> {\n` +
+    `                    if (counter.getAndUpdate(s -> s > 0 ? s - 1 : s) > 0) {\n` +
+    `                        return InvocationHandler.invokeDefault(proxy, method, args);\n` +
+    `                    }\n` +
+    `${redirects.join("\n")}\n` +
+    `                    return InvocationHandler.invokeDefault(proxy, method, args);\n` +
+    `                }\n` +
+    `            ))\n` +
+    `        );\n` +
+    `    }\n` +
+    `\n` +
+    `    static R.RedirectedCall redirect(${className} thiz, Method method, Object[] args) {\n` +
+    `        String methodName = method.getName();\n` +
+    `${instanceMethodCallers.join("\n")}\n` +
+    `        return new R.RedirectedCall(false, null);\n` +
     `    }\n` +
     `}`
   ).replace(/\n *\n+/g, "\n\n").replace(/\n+( *})/g, "\n$1");
