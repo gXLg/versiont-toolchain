@@ -20,7 +20,7 @@ class VersiontPlugin implements Plugin<Project> {
 
         project.dependencies {
             implementation "net.bytebuddy:byte-buddy:1.18.4"
-            implementation "com.github.gXLg:versiont-lib:v0.0.2"
+            modImplementation "com.github.gXLg:versiont-lib:v0.0.3"
         }
 
         def generatedSourceDir = project.layout.buildDirectory.dir("generated/sources/versiont/java").get().asFile
