@@ -486,9 +486,9 @@ function processClass(part) {
         const exec = `${methodParent}.mthd("${reflectionMethodGetter}", ${buildClassGetter(returnTypeTree)}${arguments.map(a => ", " + buildClassGetter(a.type)).join("")}).invk(${arguments.map(a => buildUnwrapper(a.type).replace("%", a.name)).join(", ")})`;
         body = returnTypeTree.type === "void" ? exec : `return ${buildWrapper(returnTypeTree).replace("%", exec)}`;
       }
-      const superCall = toExtend ? `        if (this instanceof ${className} && this.getClass() != ${className}.class) superCall++;\n` : "";
+      const superCall = toExtend ? `        if (this instanceof ${className} && this.getClass() != ${className}.class) superCall.incrementAndGet();\n` : "";
       methodsArray.push(
-        `    ${access} ${modifier}${buildTypeString(returnTypeTree)} ${methodName}(${arguments.map(a => buildTypeString(a.type) + " " + a.name).join(", ")}){\n` +
+        `    ${access} ${modifier}${buildTypeString(returnTypeTree)} ${methodName}(${arguments.map(a => buildTypeString(a.type) + " " + a.name).join(", ")}) {\n` +
         `${superCall}`  +
         `        ${body};\n` +
         `    }`
@@ -515,7 +515,7 @@ function processClass(part) {
         const accMethodName = getMethodName(rawMethodName, argumentsSignature, signatures);
         const returnStatement = returnTypeTree.type === "void" ? "" : "return ";
         methodsArray.push(
-          `    public ${modifier}${buildTypeString(returnTypeTree)} ${accMethodName}(${arguments.map(a => buildTypeString(a.type) + " " + a.name).join(", ")}){\n` +
+          `    public ${modifier}${buildTypeString(returnTypeTree)} ${accMethodName}(${arguments.map(a => buildTypeString(a.type) + " " + a.name).join(", ")}) {\n` +
           `        ${returnStatement}${methodName}(${arguments.map(a => a.name).join(", ")});\n` +
           `    }`
         );
@@ -617,11 +617,12 @@ function processClass(part) {
     `import net.bytebuddy.implementation.bind.annotation.SuperCall;\n` +
     `import java.lang.reflect.Method;\n` +
     `import java.util.concurrent.Callable;\n` +
+    `import java.util.concurrent.atomic.AtomicInteger;\n` +
     `\n` +
     `public class ${className} extends ${extendingClassString ?? "R.RWrapper<" + className + ">"}${impl} {\n` +
     `    public static final R.RClass clazz = R.clz("${reflectionClassGetter}");\n` +
     `\n` +
-    `    private int superCall = 0;\n` +
+    `    private final AtomicInteger superCall = new AtomicInteger(0);\n` +
     `\n` +
     `${instanceFields.join("\n\n")}\n` +
     `\n` +
@@ -645,8 +646,7 @@ function processClass(part) {
     `        @SuppressWarnings("unused")\n` +
     `        @RuntimeType\n` +
     `        public static Object intercept(@Origin Method method, @FieldValue("__wrapper") ${className} wrapper, @AllArguments Object[] args, @SuperCall Callable<?> superCall) throws Exception {\n` +
-    `            if (wrapper.superCall > 0) {\n` +
-    `                wrapper.superCall--;\n` +
+    `            if (wrapper.superCall.getAndUpdate(s -> s > 0 ? s - 1 : s) > 0) {\n` +
     `                return superCall.call();\n` +
     `            }\n` +
     `            String methodName = method.getName();\n` +
@@ -692,7 +692,8 @@ function processInterface(part) {
   const instanceMethods = [];
   const instanceMethodCallers = [];
 
-  const instanceMethodSignatures = { "wrapper()": 1, "unwrap()": 1, "unwrap(Class)": 1 };
+  const instanceMethodSignatures = { "unwrap()": 1, "unwrap(Class)": 1 };
+  instanceMethodSignatures[`as${wrapperClassName}`] = 1;
 
   for (const child of part.children) {
     if (child.parent.startsWith("<init>")) {
@@ -757,8 +758,8 @@ function processInterface(part) {
           body = returnTypeTree.type === "void" ? exec : `return ${buildWrapper(returnTypeTree).replace("%", exec)}`;
         }
         instanceMethods.push(
-          `    default ${buildTypeString(returnTypeTree)} ${methodName}(${arguments.map(a => buildTypeString(a.type) + " " + a.name).join(", ")})\n` +
           `    default ${buildTypeString(returnTypeTree)} ${methodName}(${arguments.map(a => buildTypeString(a.type) + " " + a.name).join(", ")}) {\n` +
+          `        superCall.computeIfAbsent(this, k -> new AtomicInteger(0)).incrementAndGet();\n` +
           `        ${body};\n` +
           `    }`
         );
@@ -818,7 +819,10 @@ function processInterface(part) {
     `import java.util.WeakHashMap;\n` +
     `import java.util.concurrent.atomic.AtomicInteger;\n` +
     `\n` +
-    `public interface ${className} extends R.RWrapperInterface<${wrapperClassName}>${ext} {\n` +
+    `public interface ${className} extends R.RWrapperInterface${ext} {\n` +
+    `    Map<${className}, ${wrapperClassName}> instances = Collections.synchronizedMap(new WeakHashMap<>());\n` +
+    `    Map<${className}, AtomicInteger> superCall = Collections.synchronizedMap(new WeakHashMap<>());\n` +
+    `\n` +
     `${instanceMethods.join("\n\n")}\n` +
     `\n` +
     `    @Override\n` +
