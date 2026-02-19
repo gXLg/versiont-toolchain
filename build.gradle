@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "dev.gxlg"
-version = "0.0.2"
+version = "0.0.3"
 
 repositories {
     mavenCentral()
@@ -32,12 +32,20 @@ gradlePlugin {
     }
 }
 
-// For local testing
 publishing {
     repositories {
         maven {
-            name = "local"
-            url = layout.buildDirectory.dir("repo")
+            url = uri(layout.projectDirectory.dir("maven-repo"))
         }
+    }
+}
+
+tasks.register("printPublicationInfo") {
+    var groupValue = project.group
+    var nameValue = project.name
+    var versionValue = project.version
+
+    doLast {
+        println("${groupValue}:${nameValue}:${versionValue}")
     }
 }

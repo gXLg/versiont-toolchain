@@ -1,4 +1,4 @@
-name: Publish Gradle Plugin
+name: Publish to Maven Repo
 
 on:
   release:
@@ -24,10 +24,7 @@ jobs:
       - name: Mark Executable
         run: chmod +x ./gradlew
 
-      - name: Build and Publish
-        uses: burrunan/gradle-cache-action@v3
-        env:
-          GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
-          GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
+      - name: Build and Publish to Maven Repository
+        uses: gXLg/maven-action@1d22cc255c7f3684f3dc0baa1fa72c8e86364cbb
         with:
-          arguments: build publishPlugins -Pgradle.publish.key=$GRADLE_PUBLISH_KEY -Pgradle.publish.secret=$GRADLE_PUBLISH_SECRET
+          token: ${{ secrets.MAVEN_TOKEN }}

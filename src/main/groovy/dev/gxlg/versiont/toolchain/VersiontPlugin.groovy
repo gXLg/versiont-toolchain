@@ -8,30 +8,28 @@ class VersiontPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
         project.pluginManager.apply("java")
+        project.pluginManager.apply("idea")
 
         def extension = project.extensions.create("versiont", VersiontExtension)
 
         project.repositories {
-            maven {
-                name = "JitPack"
-                url = "https://jitpack.io"
-            }
+            maven("https://gxlg.github.io/maven-repo/")
         }
 
         project.dependencies {
             implementation "net.bytebuddy:byte-buddy:1.18.4"
-            modImplementation "com.github.gXLg:versiont-lib:v0.0.3"
+            modImplementation "dev.gxlg:versiont-library:0.0.4"
         }
 
         def generatedSourceDir = project.layout.buildDirectory.dir("generated/sources/versiont/java").get().asFile
 
-        def generateTask = project.tasks.register("versiontMapping", Exec) {
+        def generateTask = project.tasks.register("versiontLayer", Exec) {
             group = "generation"
             description = "Generates reflection layer from a mapping file using Node.js"
 
             // Get the bundled script from resources
-            def scriptUrl = getClass().getResource("/scripts/generate-mapping.js")
-            def scriptFile = project.layout.buildDirectory.file("tmp/versiont/generate-mapping.js").get().asFile
+            def scriptUrl = getClass().getResource("/scripts/generate-layer.js")
+            def scriptFile = project.layout.buildDirectory.file("tmp/versiont/generate-layer.js").get().asFile
 
             doFirst {
                 // Extract the bundled script to a temporary location
@@ -69,6 +67,12 @@ class VersiontPlugin implements Plugin<Project> {
         project.afterEvaluate {
             project.tasks.named("compileJava") {
                 dependsOn generateTask
+            }
+        }
+
+        project.idea {
+            module {
+                generatedSourceDirs.add(generatedSourceDir)
             }
         }
     }
