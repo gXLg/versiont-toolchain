@@ -13,7 +13,10 @@ class VersiontPlugin implements Plugin<Project> {
         def extension = project.extensions.create("versiont", VersiontExtension)
 
         project.repositories {
-            maven("https://gxlg.github.io/maven-repo/")
+            maven {
+                name = "gXLg Maven"
+                url = "https://gxlg.github.io/maven-repo/"
+            }
         }
 
         project.dependencies {
