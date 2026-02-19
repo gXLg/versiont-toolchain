@@ -817,7 +817,7 @@ function processInterface(part) {
     `    }\n` +
     `\n` +
     `    default ${wrapperClassName} as${wrapperClassName}() {\n` +
-    `        return instances.computeIfAbsent(this, k -> R.interfaceInstance(${className}.class, ${wrapperClassName}.class));\n` +
+    `        return instances.computeIfAbsent(this, k -> R.interfaceInstance(this, ${className}.class, ${wrapperClassName}.class));\n` +
     `    }\n` +
     `}`
   ).replace(/\n *\n+/g, "\n\n").replace(/\n+( *})/g, "\n$1");
