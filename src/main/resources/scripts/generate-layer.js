@@ -3,6 +3,7 @@
 // Yes, I know it's spaghetti code
 // Yes, I am going to refactor it at some point
 // No, not now
+// Amen
 
 const fs = require("fs");
 
