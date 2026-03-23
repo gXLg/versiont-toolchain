@@ -12,7 +12,6 @@
 
 A powerful java reflection layer and toolchain targeted at multi-version Minecraft Fabric modding
 
-* Currently, Version't is in **beta**
 * Supports all Minecraft release versions starting at **1.17**
 * This page is about **Version't Toolchain**: A Gradle plugin to make use of the
   Version't Library and to generate mappings for it
