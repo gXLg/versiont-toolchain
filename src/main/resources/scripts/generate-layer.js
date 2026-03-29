@@ -25,7 +25,7 @@ function brackets(string, start, endChar) {
 
 function typeTree(type, additionalClasses, shortClassNames, isInterface) {
   if (type in shortClassNames) {
-    return typeTree(shortClassNames[type], additionalClasses, shortClassNames, isInterface);
+    return typeTree(shortClassNames[type] + (suffixes[type] ?? ""), additionalClasses, shortClassNames, isInterface);
   }
   if (type.endsWith("[]")) {
     const main = typeTree(type.slice(0, -2), additionalClasses, shortClassNames);
@@ -260,13 +260,21 @@ const file = fs.readFileSync(inputFile, "utf-8").trim();
 
 const rlines = file.split("\n").map(l => l.split("#")[0].trimEnd()).filter(l => l.trim().length);
 const shortClassNames = { "[Object]": "!java.lang.Object" };
+const suffixes = {};
 const definedAdapters = {};
 const lines = [];
 for (const line of rlines) {
   if (line.startsWith("import ")) {
-    const className = line.slice(7).trimStart();
+    const [className, ...rest] = line.slice(7).trim().split(" ").filter(r => r);
     const shortName = className.split(".").slice(-1)[0];
     shortClassNames[shortName] = className;
+    if (rest[0] === "alt:") {
+      for (let i = 1; i < rest.length; i++) {
+        const suffix = rest[i];
+        shortClassNames[shortName + suffix] = className;
+        suffixes[shortName + suffix] = suffix;
+      }
+    }
   } else if (line.startsWith("adapter ")) {
     const [cls, path] = line.slice(8).trimStart().split(" -> ");
     definedAdapters[cls] = path;
@@ -322,9 +330,10 @@ function processClass(part) {
   }
 
   // parse class name
-  const rGetter = shortClassNames[leftClass] ?? leftClass
+  const rGetter = shortClassNames[leftClass] ?? leftClass;
+  const suffix = suffixes[leftClass] ?? "";
   const reflectionClassGetter = rGetter.startsWith("!") ? rGetter.slice(1) : rGetter;
-  const fullyQualified = "dev.gxlg.versiont.gen." + reflectionClassGetter.split("/").slice(-1)[0];
+  const fullyQualified = "dev.gxlg.versiont.gen." + reflectionClassGetter.split("/").slice(-1)[0] + suffix;
   if (fullyQualified in processedClasses) {
     return;
   }
@@ -619,15 +628,12 @@ function processClass(part) {
     `import dev.gxlg.versiont.api.types.Wrapper;\n` +
     `import dev.gxlg.versiont.api.types.WrappedMethod;\n` +
     `\n` +
-    `import java.util.List;\n` +
-    `import java.util.ArrayList;\n` +
-    `\n` +
     `public class ${className} extends ${extendingClassString ?? "Wrapper<" + className + ">"}${impl} {\n` +
     `    public static final R.RClass clazz = R.clz("${reflectionClassGetter}");\n` +
     `\n` +
-    `    public static final List<Class<? extends ${className}>> subClazzes = List.of(%subclasses%);\n` +
+    `    public static final java.util.List<Class<? extends ${className}>> subClazzes = java.util.List.of(%subclasses%);\n` +
     `\n` +
-    `    public static final List<WrappedMethod> wrappedMethods = List.of(\n` +
+    `    public static final java.util.List<WrappedMethod> wrappedMethods = java.util.List.of(\n` +
     `${wrappedMethods.join(",\n")}\n` +
     `    );\n` +
     `\n` +
