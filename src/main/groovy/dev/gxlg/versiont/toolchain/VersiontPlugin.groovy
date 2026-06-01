@@ -17,11 +17,12 @@ class VersiontPlugin implements Plugin<Project> {
                 name = "gXLg Maven"
                 url = "https://gxlg.github.io/maven-repo/"
             }
+            mavenLocal()
         }
 
         project.dependencies {
             implementation "net.bytebuddy:byte-buddy:1.18.4"
-            implementation "dev.gxlg:versiont-library:1.2.0"
+            implementation "dev.gxlg:versiont-library:1.2.1"
         }
 
         def generatedSourceDir = project.layout.buildDirectory.dir("generated/sources/versiont/java").get().asFile
