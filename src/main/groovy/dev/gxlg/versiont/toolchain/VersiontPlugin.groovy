@@ -17,7 +17,6 @@ class VersiontPlugin implements Plugin<Project> {
                 name = "gXLg Maven"
                 url = "https://gxlg.github.io/maven-repo/"
             }
-            mavenLocal()
         }
 
         project.dependencies {
