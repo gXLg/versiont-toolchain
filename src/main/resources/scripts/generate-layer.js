@@ -135,7 +135,7 @@ function buildWrapper(tree) {
       console.log("Generic adapter for", main, "is not defined!");
       process.exit(1);
     }
-    return `R.nullSafe(${path}.wrapper(${generics.map(_buildWrapper).join(", ")})).apply(%)`;
+    return `R.nullSafe(${path}.wrapper(${generics.map(g => _buildWrapper(g) + ", " + _buildUnwrapper(g)).join(", ")})).apply(%)`;
   } else if (type === "class") {
     return "R.clz((Class<?>) %)";
   }
@@ -160,7 +160,7 @@ function _buildWrapper(tree) {
       console.log("Generic adapter for", main, "is not defined!");
       process.exit(1);
     }
-    return `${path}.wrapper(${generics.map(_buildWrapper).join(", ")})`;
+    return `${path}.wrapper(${generics.map(g => _buildWrapper(g) + ", " + _buildUnwrapper(g)).join(", ")})`;
   } else if (type === "class") {
     return "x -> R.clz((Class<?>) x)";
   }
@@ -183,7 +183,7 @@ function buildUnwrapper(tree) {
       console.log("Generic adapter for", main, "is not defined!");
       process.exit(1);
     }
-    return `R.nullSafe(${path}.<${generics.map(buildTypeString).join(", ")}>unwrapper(${generics.map(_buildUnwrapper).join(", ")})).apply(%)`;
+    return `R.nullSafe(${path}.<${generics.map(buildTypeString).join(", ")}>unwrapper(${generics.map(g => _buildWrapper(g) + ", " + _buildUnwrapper(g)).join(", ")})).apply(%)`;
   } else if (type === "class") {
     return `%.self()`;
   }
@@ -206,7 +206,7 @@ function _buildUnwrapper(tree) {
       console.log("Generic adapter for", main, "is not defined!");
       process.exit(1);
     }
-    return `${path}.unwrapper(${generics.map(_buildUnwrapper).join(", ")})`;
+    return `${path}.unwrapper(${generics.map(g => _buildWrapper(g) + ", " + _buildUnwrapper(g)).join(", ")})`;
   } else if (type === "class") {
     return `x -> x.self()`;
   }
