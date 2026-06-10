@@ -21,7 +21,7 @@ class VersiontPlugin implements Plugin<Project> {
 
         project.dependencies {
             implementation "net.bytebuddy:byte-buddy:1.18.4"
-            implementation "dev.gxlg:versiont-library:1.2.2"
+            implementation "dev.gxlg:versiont-library:1.2.3"
         }
 
         def generatedSourceDir = project.layout.buildDirectory.dir("generated/sources/versiont/java").get().asFile
