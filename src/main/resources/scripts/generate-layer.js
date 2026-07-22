@@ -65,7 +65,7 @@ function typeTree(type, additionalClasses, shortClassNames, isInterface) {
       type = type.slice(1);
     }
     additionalClasses.push({ "parent": (isInterface ? "interface " : "class ") + type, "children": [] });
-    const main = "dev.gxlg.versiont.gen." + type.split("/").slice(-1)[0] + (isInterface ? "I" : "");
+    const main = "dev.gxlg.versiont.gen." + type.split("/").slice(-1)[0].split("@")[0] + (isInterface ? "I" : "");
     return { "type": "wrapper", main, "wrapped": true, "generic": false };
   }
   if (type === "void") {
@@ -266,7 +266,10 @@ const lines = [];
 for (const line of rlines) {
   if (line.startsWith("import ")) {
     const [className, ...rest] = line.slice(7).trim().split(" ").filter(r => r);
-    const shortName = className.split(".").slice(-1)[0];
+    const shortName = className
+      .split("/").slice(-1)[0]
+      .split("@")[0]
+      .split(".").slice(-1)[0];
     shortClassNames[shortName] = className;
     if (rest[0] === "alt:") {
       for (let i = 1; i < rest.length; i++) {
@@ -333,7 +336,7 @@ function processClass(part) {
   const rGetter = shortClassNames[leftClass] ?? leftClass;
   const suffix = suffixes[leftClass] ?? "";
   const reflectionClassGetter = rGetter.startsWith("!") ? rGetter.slice(1) : rGetter;
-  const fullyQualified = "dev.gxlg.versiont.gen." + reflectionClassGetter.split("/").slice(-1)[0] + suffix;
+  const fullyQualified = "dev.gxlg.versiont.gen." + reflectionClassGetter.split("/").slice(-1)[0].split("@")[0] + suffix;
   if (fullyQualified in processedClasses) {
     return;
   }
