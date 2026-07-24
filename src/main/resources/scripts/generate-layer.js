@@ -260,6 +260,7 @@ const file = fs.readFileSync(inputFile, "utf-8").trim();
 
 const rlines = file.split("\n").map(l => l.split("#")[0].trimEnd()).filter(l => l.trim().length);
 const shortClassNames = { "[Object]": "!java.lang.Object" };
+const alternatives = {};
 const suffixes = {};
 const definedAdapters = {};
 const lines = [];
@@ -271,11 +272,19 @@ for (const line of rlines) {
       .split("@")[0]
       .split(".").slice(-1)[0];
     shortClassNames[shortName] = className;
+    let commonInterface = null;
+    if (rest.length > 0 && rest.slice(-1)[0].startsWith("(")) {
+      commonInterface = rest.slice(-1)[0].slice(1, -1);
+      alternatives[shortName] = commonInterface;
+    }
     if (rest[0] === "alt:") {
-      for (let i = 1; i < rest.length; i++) {
+      for (let i = 1; i < rest.length - (commonInterface == null ? 0 : 1); i++) {
         const suffix = rest[i];
         shortClassNames[shortName + suffix] = className;
         suffixes[shortName + suffix] = suffix;
+        if (commonInterface != null) {
+          alternatives[shortName + suffix] = commonInterface;
+        }
       }
     }
   } else if (line.startsWith("adapter ")) {
@@ -339,6 +348,9 @@ function processClass(part) {
   const fullyQualified = "dev.gxlg.versiont.gen." + reflectionClassGetter.split("/").slice(-1)[0].split("@")[0] + suffix;
   if (fullyQualified in processedClasses) {
     return;
+  }
+  if (leftClass in alternatives) {
+    implementingInterfaces.push(alternatives[leftClass]);
   }
 
   if (extendingClassString == null && fullyQualified !== "dev.gxlg.versiont.gen.java.lang.Object") {
@@ -840,6 +852,13 @@ while (additionalClasses.length) {
   processClass(additionalClasses.shift());
 }
 
+function writeContent(fullyQualified, content) {
+  const fileName = fullyQualified.replace("dev.gxlg.versiont.gen.", "").replaceAll(".", "/") + ".java";
+  const folder = fileName.split("/").slice(0, -1).join("/");
+  fs.mkdirSync(genRoot + "/" + folder, { "recursive": true });
+  fs.writeFileSync(genRoot + "/" + fileName, content);
+}
+
 const genRoot = outputDir + "/dev/gxlg/versiont/gen";
 if (fs.existsSync(genRoot)) {
   fs.rmSync(genRoot, { "recursive": true });
@@ -851,10 +870,7 @@ for (const fullyQualified in processedClasses) {
     const subclasses = classesInheritance[fullyQualified] ?? [];
     content = content.replace("%subclasses%", subclasses.map(c => c + ".class").join(", "));
   }
-  const fileName = fullyQualified.replace("dev.gxlg.versiont.gen.", "").replaceAll(".", "/") + ".java";
-  const folder = fileName.split("/").slice(0, -1).join("/");
-  fs.mkdirSync(genRoot + "/" + folder, { "recursive": true });
-  fs.writeFileSync(genRoot + "/" + fileName, content);
+  writeContent(fullyQualified, content);
   console.log("Generated", fullyQualified);
 }
 console.log("Version't layer generated!");
