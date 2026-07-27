@@ -100,12 +100,12 @@ function buildClassGetter(tree) {
     return buildClassGetter(main) + ".arrayType()";
   }
   if (type === "wrapper") {
-    return main + ".clazz.self()";
+    return main + ".clazz";
   }
   if (type === "class") {
-    return "Class.class"
+    return "R.clz(Class.class)"
   }
-  return main.replaceAll("$", ".") + ".class";
+  return "R.clz(" + main.replaceAll("$", ".") + ".class)";
 }
 
 function buildSignatureType(tree) {
