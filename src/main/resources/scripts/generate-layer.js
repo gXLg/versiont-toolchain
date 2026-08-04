@@ -128,7 +128,7 @@ function buildWrapper(tree) {
     if (!wrapped && !generic) {
       return `(${main.main}[]) %`;
     }
-    return `R.nullSafe(R.arrayWrapper(${_buildWrapper(main)})).apply(%)`;
+    return `R.nullSafe(R.arrayWrapper(${_buildWrapper(main)}, ${buildClassGetter(main)}.self())).apply(%)`;
   } else if (type === "generic") {
     const path = definedAdapters[main];
     if (path == null) {
@@ -153,7 +153,7 @@ function _buildWrapper(tree) {
     if (!wrapped && !generic) {
       return `x -> (${main.main}[]) x`;
     }
-    return `R.arrayWrapper(${_buildWrapper(main)})`;
+    return `R.arrayWrapper(${_buildWrapper(main)}, ${buildClassGetter(main)}.self())`;
   } else if (type === "generic") {
     const path = definedAdapters[main];
     if (path == null) {
@@ -176,7 +176,7 @@ function buildUnwrapper(tree) {
   } else if (type === "wrapper") {
     return `R.unwrapWrapper(%)`;
   } else if (type === "array") {
-    return `R.nullSafe(R.<${buildTypeString(main)}>arrayUnwrapper(${_buildUnwrapper(main)})).apply(%)`;
+    return `R.nullSafe(R.<${buildTypeString(main)}>arrayUnwrapper(${_buildUnwrapper(main)}, ${buildClassGetter(main)}.self())).apply(%)`;
   } else if (type === "generic") {
     const path = definedAdapters[main];
     if (path == null) {
@@ -199,7 +199,7 @@ function _buildUnwrapper(tree) {
   } else if (type === "wrapper") {
     return `x -> R.unwrapWrapper(x)`;
   } else if (type === "array") {
-    return `R.arrayUnwrapper(${_buildUnwrapper(main)})`;
+    return `R.arrayUnwrapper(${_buildUnwrapper(main)}, ${buildClassGetter(main)}.self())`;
   } else if (type === "generic") {
     const path = definedAdapters[main];
     if (path == null) {

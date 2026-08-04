@@ -21,7 +21,7 @@ class VersiontPlugin implements Plugin<Project> {
 
         project.dependencies {
             implementation "net.bytebuddy:byte-buddy:1.18.4"
-            implementation "dev.gxlg:versiont-library:1.3.1"
+            implementation "dev.gxlg:versiont-library:1.3.2"
         }
 
         def generatedSourceDir = project.layout.buildDirectory.dir("generated/sources/versiont/java").get().asFile
@@ -66,9 +66,12 @@ class VersiontPlugin implements Plugin<Project> {
             }
         }
 
-        // Make compileJava depend on generation task
+        // Make compileJava and sourcesJar depend on generation task
         project.afterEvaluate {
             project.tasks.named("compileJava") {
+                dependsOn generateTask
+            }
+            project.tasks.named("sourcesJar") {
                 dependsOn generateTask
             }
         }
