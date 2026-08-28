@@ -71,7 +71,8 @@ class VersiontPlugin implements Plugin<Project> {
             project.tasks.named("compileJava") {
                 dependsOn generateTask
             }
-            project.tasks.named("sourcesJar") {
+
+            project.tasks.matching { it.name == "sourcesJar" }.configureEach {
                 dependsOn generateTask
             }
         }
